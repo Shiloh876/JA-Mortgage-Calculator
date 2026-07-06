@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Justin's Property Affordability Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --navy: #0A1628; --navy-mid: #122040; --navy-light: #1D3056;
+    --gold: #C9A84C; --gold-light: #E4C878; --gold-dim: rgba(201,168,76,0.15);
+    --white: #FFFFFF; --slate: #8A9BB0; --slate-light: #B4C2D0;
+    --border: rgba(138,155,176,0.25); --border-strong: rgba(138,155,176,0.45);
+    --green: #2ECC7A; --green-dim: rgba(46,204,122,0.12);
+    --red: #E8485A; --red-dim: rgba(232,72,90,0.12);
+    --amber: #F5A623; --amber-dim: rgba(245,166,35,0.12);
+    --radius: 12px; --radius-sm: 8px; --radius-lg: 20px;
+  }
+  body { font-family: 'Inter', sans-serif; background: var(--navy); color: var(--white); min-height: 100vh; padding: 24px 16px 48px; line-height: 1.5; }
+
+  .page-header { max-width: 980px; margin: 0 auto 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .page-title { font-family: 'Space Grotesk', sans-serif; font-size: clamp(18px,3.5vw,26px); font-weight: 700; color: var(--white); letter-spacing: -0.5px; }
+  .page-title span { color: var(--gold); }
+  .page-subtitle { font-size: 12px; color: var(--slate); margin-top: 3px; }
+  .reset-btn { font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; color: var(--slate); background: transparent; border: 1px solid var(--border-strong); border-radius: 6px; padding: 7px 14px; cursor: pointer; transition: color .15s, border-color .15s; white-space: nowrap; }
+  .reset-btn:hover { color: var(--white); border-color: var(--slate-light); }
+
+  .layout { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: 1fr 300px; gap: 14px; align-items: start; }
+  @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+
+  .card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+  .card-section { padding: 18px 20px; border-bottom: 1px solid var(--border); }
+  .card-section:last-child { border-bottom: none; }
+  .section-label { font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; }
+
+  .price-hero { padding: 22px 20px; background: linear-gradient(135deg, var(--navy-light) 0%, var(--navy-mid) 100%); border-bottom: 1px solid var(--border); }
+  .price-label { font-size: 12px; font-weight: 500; color: var(--slate); margin-bottom: 7px; }
+  .price-input-wrap { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1.5px solid var(--gold); border-radius: var(--radius); padding: 10px 14px; transition: box-shadow .15s; }
+  .price-input-wrap:focus-within { box-shadow: 0 0 0 3px rgba(201,168,76,0.2); }
+  .price-prefix { font-family: 'Space Grotesk', sans-serif; font-size: 17px; font-weight: 600; color: var(--gold); white-space: nowrap; }
+  .price-input { font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 700; color: var(--white); background: transparent; border: none; outline: none; width: 100%; min-width: 0; letter-spacing: -0.5px; -moz-appearance: textfield; }
+  .price-input::-webkit-outer-spin-button, .price-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .price-input::placeholder { color: rgba(255,255,255,0.2); }
+
+  /* SANITY CHECK BAR */
+  .sanity-bar { margin-top: 14px; }
+  .sanity-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; position: relative; }
+  .sanity-fill-loan { position: absolute; left: 0; top: 0; height: 100%; border-radius: 3px 0 0 3px; transition: width .4s ease; }
+  .sanity-fill-deposit { position: absolute; top: 0; height: 100%; border-radius: 0 3px 3px 0; transition: left .4s ease, width .4s ease; background: rgba(201,168,76,0.5); }
+  .sanity-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: var(--slate); flex-wrap: wrap; gap: 4px; }
+  .sanity-status { font-size: 11px; font-weight: 600; margin-top: 5px; }
+
+  .input-grid { display: grid; gap: 10px; }
+  .input-grid.col2 { grid-template-columns: 1fr 1fr; }
+  .input-grid.col3 { grid-template-columns: 1fr 1fr 1fr; }
+  .input-grid.col4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  @media (max-width: 520px) { .input-grid.col3, .input-grid.col4 { grid-template-columns: 1fr 1fr; } }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field-label { font-size: 11px; font-weight: 500; color: var(--slate); letter-spacing: 0.2px; }
+  .field-input { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--white); background: rgba(255,255,255,0.06); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 8px 10px; outline: none; width: 100%; transition: border-color .15s, box-shadow .15s; -moz-appearance: textfield; }
+  .field-input::-webkit-outer-spin-button, .field-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .field-input:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(201,168,76,0.15); }
+  .field-input.auto { color: var(--slate-light); border-style: dashed; }
+  .field-input.auto:focus { color: var(--white); border-style: solid; }
+  .field-hint { font-size: 10px; color: var(--slate); margin-top: 1px; }
+  .field-hint.auto-hint { color: var(--amber); }
+
+  .loan-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .loan-table th { font-size: 10px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: var(--slate); text-align: right; padding: 0 6px 8px; }
+  .loan-table th:first-child { text-align: left; padding-left: 0; }
+  .loan-table td { padding: 8px 6px; border-top: 1px solid var(--border); text-align: right; font-family: 'Space Grotesk', sans-serif; font-weight: 500; color: var(--slate-light); white-space: nowrap; }
+  .loan-table td:first-child { text-align: left; font-family: 'Inter', sans-serif; padding-left: 0; color: var(--white); font-size: 12px; white-space: normal; }
+  .loan-table tr:first-child td { border-top: none; }
+  .loan-table .total-row td { border-top: 1.5px solid var(--border-strong); font-weight: 700; color: var(--white); padding-top: 10px; }
+
+  .tag { display: inline-block; font-size: 9px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 5px; border-radius: 4px; margin-left: 4px; vertical-align: middle; }
+  .tag-bank { background: rgba(52,152,255,0.15); color: #5BB3FF; }
+  .tag-nht  { background: var(--gold-dim); color: var(--gold); }
+  .tag-auto { background: rgba(46,204,122,0.12); color: var(--green); font-size: 8px; }
+
+  .band-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .band-btn { font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 600; color: var(--slate-light); background: rgba(255,255,255,0.05); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 9px 8px; cursor: pointer; text-align: center; transition: all .15s; line-height: 1.4; }
+  .band-btn:hover { border-color: var(--gold); color: var(--white); }
+  .band-btn.active { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); }
+  .band-btn .band-rate { display: block; font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .band-btn .band-range { display: block; font-size: 9px; font-weight: 400; opacity: 0.75; margin-top: 1px; }
+
+  .fee-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 12px; }
+  .fee-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .fee-row:first-child { padding-top: 0; }
+  .fee-name { font-size: 12px; color: var(--slate-light); flex: 1; min-width: 0; }
+  .fee-name small { display: block; font-size: 10px; color: var(--slate); margin-top: 1px; }
+  .fee-value { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--white); text-align: right; white-space: nowrap; }
+  .fee-gct-note { font-size: 9px; font-weight: 400; color: var(--amber); display: block; text-align: right; margin-top: 1px; }
+
+  .subtotal-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); margin-top: 10px; }
+  .subtotal-label { font-size: 12px; font-weight: 500; color: var(--slate-light); }
+  .subtotal-value { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); }
+
+  .nht-advance-section { margin-top: 10px; }
+  .yn-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+  .yn-label { font-size: 12px; color: var(--white); font-weight: 500; line-height: 1.4; }
+  .yn-sub { font-size: 10px; color: var(--slate); margin-top: 2px; }
+  .yn-btns { display: flex; gap: 6px; flex-shrink: 0; }
+  .yn-btn { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 700; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border-strong); background: transparent; color: var(--slate-light); cursor: pointer; transition: all .15s; letter-spacing: 0.5px; }
+  .yn-btn.active-yes { background: var(--green-dim); border-color: rgba(46,204,122,0.4); color: var(--green); }
+  .yn-btn.active-no  { background: var(--red-dim);   border-color: rgba(232,72,90,0.3);  color: var(--red); }
+  .yn-btn:not(.active-yes):not(.active-no):hover { border-color: var(--slate-light); color: var(--white); }
+
+  .nht-deduction { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--green-dim); border: 1px solid rgba(46,204,122,0.25); border-radius: var(--radius-sm); margin-top: 4px; }
+  .nht-deduction-label { font-size: 12px; font-weight: 500; color: var(--green); display: flex; align-items: center; gap: 5px; }
+  .nht-deduction-label::before { content: '↓'; font-size: 13px; font-weight: 700; }
+  .nht-deduction-value { font-family: 'Space Grotesk', sans-serif; font-size: 14px; font-weight: 700; color: var(--green); }
+
+  .out-of-pocket { display: flex; justify-content: space-between; align-items: center; padding: 13px 14px; background: var(--gold-dim); border: 1.5px solid rgba(201,168,76,0.4); border-radius: var(--radius-sm); margin-top: 8px; }
+  .oop-label { font-family: 'Space Grotesk', sans-serif; font-size: 12px; font-weight: 600; color: var(--gold-light); }
+  .oop-value { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; color: var(--gold); }
+
+  /* min income callout */
+  .min-income-callout { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(138,155,176,0.08); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); margin-top: 10px; }
+  .mic-label { font-size: 11px; color: var(--slate-light); }
+  .mic-value { font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); }
+
+  .side-card { background: var(--navy-mid); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; position: sticky; top: 16px; }
+  .verdict-header { padding: 18px 18px 14px; background: var(--navy-light); border-bottom: 1px solid var(--border); }
+  .verdict-label { font-size: 10px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: var(--slate); margin-bottom: 8px; }
+  .verdict-badge { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; transition: all .3s; }
+  .verdict-badge.strong  { background: var(--green-dim); color: var(--green); border: 1px solid rgba(46,204,122,0.3); }
+  .verdict-badge.caution { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.3); }
+  .verdict-badge.stretch { background: var(--red-dim);   color: var(--red);   border: 1px solid rgba(232,72,90,0.3); }
+  .verdict-badge.unknown { background: rgba(255,255,255,0.06); color: var(--slate-light); border: 1px solid var(--border); }
+  .verdict-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+
+  .monthly-hero { padding: 16px 18px; background: var(--gold-dim); border-bottom: 1px solid rgba(201,168,76,0.2); }
+  .monthly-label { font-size: 10px; font-weight: 500; color: var(--gold-light); margin-bottom: 3px; opacity: .85; text-transform: uppercase; letter-spacing: 0.5px; }
+  .monthly-total { font-family: 'Space Grotesk', sans-serif; font-size: 28px; font-weight: 700; color: var(--gold); letter-spacing: -1px; line-height: 1; }
+  .monthly-sub { font-size: 10px; color: var(--gold-light); opacity: .6; margin-top: 3px; }
+
+  .stat-stack { padding: 12px 18px; }
+  .stat-item { display: flex; justify-content: space-between; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); gap: 8px; }
+  .stat-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .stat-item:first-child { padding-top: 0; }
+  .stat-name { font-size: 11px; color: var(--slate); flex: 1; min-width: 0; }
+  .stat-value { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 700; color: var(--white); text-align: right; white-space: nowrap; }
+  .stat-value.accent { color: var(--gold); }
+
+  .income-check { padding: 14px 18px; border-top: 1px solid var(--border); }
+  .income-label { font-size: 11px; color: var(--slate); margin-bottom: 6px; }
+  .income-input-wrap { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-strong); border-radius: var(--radius-sm); padding: 7px 10px; }
+  .income-prefix { font-size: 12px; color: var(--slate); font-family: 'Space Grotesk', sans-serif; font-weight: 600; white-space: nowrap; }
+  .income-input { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: var(--white); background: transparent; border: none; outline: none; width: 100%; -moz-appearance: textfield; }
+  .income-input::-webkit-outer-spin-button, .income-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .dti-bar-wrap { margin-top: 9px; }
+  .dti-track { height: 4px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+  .dti-fill { height: 100%; border-radius: 3px; transition: width .4s ease; background: var(--green); }
+  .dti-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--slate); }
+
+  .info-note { font-size: 10px; color: var(--slate); line-height: 1.5; padding: 8px 10px; background: rgba(255,255,255,0.03); border-radius: var(--radius-sm); border-left: 2px solid rgba(201,168,76,0.3); margin-top: 8px; }
+  .params-box { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 14px; }
+  .params-box-label { font-size: 10px; font-weight: 600; color: var(--slate); letter-spacing: 0.8px; text-transform: uppercase; margin-bottom: 10px; }
+  .footer-note { max-width: 980px; margin: 18px auto 0; font-size: 10px; color: var(--slate); text-align: center; line-height: 1.6; opacity: .65; }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Justin's <span>Property Affordability</span> Calculator</h1>
+    <p class="page-subtitle">JMD · Quick affordability assessment for Jamaican residential purchases</p>
+  </div>
+  <button class="reset-btn" onclick="resetAll()">Reset</button>
+</div>
+
+<div class="layout">
+<div style="display:flex;flex-direction:column;gap:14px;">
+
+  <!-- ── PRICE + SANITY ── -->
+  <div class="card">
+    <div class="price-hero">
+      <p class="price-label">Purchase / Listing Price</p>
+      <div class="price-input-wrap">
+        <span class="price-prefix">J$</span>
+        <input class="price-input" type="number" id="purchasePrice" value="30000000" placeholder="0" oninput="onPriceChange()" />
+      </div>
+
+      <!-- SANITY CHECK BAR -->
+      <div class="sanity-bar">
+        <div class="sanity-track">
+          <div class="sanity-fill-loan" id="sanityLoanFill" style="width:0%;background:var(--green);"></div>
+          <div class="sanity-fill-deposit" id="sanityDepFill" style="left:0%;width:0%;"></div>
+        </div>
+        <div class="sanity-labels">
+          <span id="sanityLoanLabel">Loans: —</span>
+          <span id="sanityDepLabel">Deposit: —</span>
+          <span id="sanityPriceLabel">Price: —</span>
+        </div>
+        <div class="sanity-status" id="sanityStatus"></div>
+      </div>
+    </div>
+
+    <!-- LOAN TABLE -->
+    <div class="card-section">
+      <p class="section-label">Loan Structure</p>
+      <table class="loan-table">
+        <thead>
+          <tr><th>Facility</th><th>Amount</th><th>Rate</th><th>Term</th><th>Monthly</th></tr>
+        </thead>
+        <tbody id="loanTableBody"></tbody>
+        <tfoot>
+          <tr class="total-row">
+            <td>Total</td>
+            <td id="tTotalAmount">—</td>
+            <td id="tBlendedRate">—</td>
+            <td>—</td>
+            <td id="tTotalMonthly">—</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- LOAN INPUTS -->
+    <div class="card-section">
+      <p class="section-label">Loan Parameters</p>
+
+      <!-- Bank -->
+      <div style="margin-bottom:16px;">
+        <p style="font-size:11px;font-weight:600;color:#5BB3FF;margin-bottom:8px;letter-spacing:.4px;">
+          BANK FINANCING <span class="tag tag-bank">Bank</span> <span class="tag tag-auto" id="bankAutoTag">AUTO</span>
+        </p>
+        <div class="input-grid col3">
+          <div class="field">
+            <span class="field-label">Loan Amount (J$)</span>
+            <input class="field-input auto" type="number" id="bankAmount" oninput="onBankAmountEdit()" />
+            <span class="field-hint auto-hint" id="bankAutoHint">Auto: price − J$9M NHT. Edit to override.</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Interest Rate %</span>
+            <input class="field-input" type="number" id="bankRate" value="9.00" step="0.01" oninput="recalc()" />
+            <span class="field-hint">Standard market: 9%</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Term (months)</span>
+            <input class="field-input" type="number" id="bankTerm" value="360" oninput="recalc()" />
+          </div>
+        </div>
+        <div class="info-note" style="margin-top:8px;" id="bankAutoNote">
+          Bank loan snaps to purchase price minus NHT's J$9M. Edit the amount field to set a custom figure (e.g. stronger deposit).
+        </div>
+      </div>
+
+      <!-- NHT -->
+      <div>
+        <p style="font-size:11px;font-weight:600;color:var(--gold);margin-bottom:8px;letter-spacing:.4px;">NHT MORTGAGE <span class="tag tag-nht">NHT</span></p>
+        <div class="input-grid col2" style="margin-bottom:10px;">
+          <div class="field">
+            <span class="field-label">Loan Amount (J$)</span>
+            <input class="field-input" type="number" id="nhtAmount" value="9000000" oninput="recalc()" />
+            <span class="field-hint">Standard allocation: J$9,000,000</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Term (months)</span>
+            <input class="field-input" type="number" id="nhtTerm" value="360" oninput="recalc()" />
+          </div>
+        </div>
+
+        <p style="font-size:10px;font-weight:600;color:var(--slate);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">Select Your Weekly Income Band</p>
+        <div class="band-grid" id="bandGrid">
+          <button class="band-btn" data-rate="0" onclick="selectBand(this)">
+            <span class="band-rate">0%</span>
+            <span class="band-range">Up to J$30,000/wk</span>
+            <span class="band-range">(Min. wage)</span>
+          </button>
+          <button class="band-btn" data-rate="2" onclick="selectBand(this)">
+            <span class="band-rate">2%</span>
+            <span class="band-range">J$30,001 – J$42,000/wk</span>
+          </button>
+          <button class="band-btn active" data-rate="4" onclick="selectBand(this)">
+            <span class="band-rate">4%</span>
+            <span class="band-range">J$42,001 – J$100,000/wk</span>
+          </button>
+          <button class="band-btn" data-rate="5" onclick="selectBand(this)">
+            <span class="band-rate">5%</span>
+            <span class="band-range">J$100,001+/wk</span>
+          </button>
+        </div>
+        <div class="info-note" style="margin-top:8px;">NHT rate set to <strong id="nhtRateDisplay">4.00%</strong> based on selected income band.</div>
+      </div>
+    </div>
+
+    <!-- MONTHLY ADD-ONS -->
+    <div class="card-section">
+      <p class="section-label">Monthly Add-ons</p>
+      <div class="input-grid col2">
+        <div class="field">
+          <span class="field-label">Maintenance / HOA (J$)</span>
+          <input class="field-input" type="number" id="maintenance" value="0" oninput="recalc()" />
+          <span class="field-hint">Strata fee, complex maintenance</span>
+        </div>
+        <div class="field">
+          <span class="field-label">Property Insurance (J$)</span>
+          <input class="field-input auto" type="number" id="insurance" oninput="onInsuranceEdit()" />
+          <span class="field-hint auto-hint">Auto: 0.05% of property value/month. Edit to override.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UPFRONT COSTS ── -->
+  <div class="card">
+    <div class="card-section">
+      <p class="section-label">Upfront Transaction Costs</p>
+
+      <div class="params-box">
+        <p class="params-box-label">Fee Parameters (editable)</p>
+        <div class="input-grid col4">
+          <div class="field">
+            <span class="field-label">Attorney Fee %</span>
+            <input class="field-input" type="number" id="attorneyPct" value="1.25" step="0.01" oninput="recalc()" />
+            <span class="field-hint">of purchase price</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Sales Agreement %</span>
+            <input class="field-input" type="number" id="salesAgrPct" value="0.20" step="0.01" oninput="recalc()" />
+            <span class="field-hint">of purchase price</span>
+          </div>
+          <div class="field">
+            <span class="field-label">NLA Registration %</span>
+            <input class="field-input" type="number" id="nlaRegPct" value="0.25" step="0.01" oninput="recalc()" />
+            <span class="field-hint">National Land Agency</span>
+          </div>
+          <div class="field">
+            <span class="field-label">Required Deposit %</span>
+            <input class="field-input" type="number" id="depositPct" value="10" step="0.5" oninput="recalc()" />
+            <span class="field-hint">of purchase price</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="feeBreakdown"></div>
+
+      <div class="subtotal-row">
+        <span class="subtotal-label">Deposit + All Fees</span>
+        <span class="subtotal-value" id="totalUpfront">—</span>
+      </div>
+
+      <!-- NHT Advance -->
+      <div class="nht-advance-section">
+        <div class="yn-row">
+          <div>
+            <p class="yn-label">Are you 35 years old or under?</p>
+            <p class="yn-sub">Eligible for NHT Advance: up to J$2M drawn from your J$9M allocation</p>
+          </div>
+          <div class="yn-btns">
+            <button class="yn-btn active-yes" id="btnYes" onclick="setAge35(true)">YES</button>
+            <button class="yn-btn" id="btnNo" onclick="setAge35(false)">NO</button>
+          </div>
+        </div>
+        <div id="nhtAdvanceField">
+          <div class="field">
+            <span class="field-label">NHT Advance Amount (J$)</span>
+            <input class="field-input" type="number" id="nhtAdvanceAmount" value="2000000" oninput="recalc()" />
+            <span class="field-hint">Max J$2,000,000 · subject to NHT confirmation</span>
+          </div>
+        </div>
+        <div id="nhtDeductionRow"></div>
+        <div class="out-of-pocket">
+          <span class="oop-label">Out-of-pocket required</span>
+          <span class="oop-value" id="outOfPocket">—</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- end left col -->
+
+<!-- ── SIDEBAR ── -->
+<div class="side-card">
+  <div class="verdict-header">
+    <p class="verdict-label">Quick verdict</p>
+    <div class="verdict-badge unknown" id="verdictBadge">
+      <div class="verdict-dot"></div>
+      <span id="verdictText">Enter income below</span>
+    </div>
+  </div>
+
+  <div class="monthly-hero">
+    <p class="monthly-label">Total monthly commitment</p>
+    <div class="monthly-total" id="monthlyTotal">J$0</div>
+    <p class="monthly-sub">mortgage + insurance + maintenance</p>
+  </div>
+
+  <div class="stat-stack">
+    <div class="stat-item"><span class="stat-name">Mortgage payments</span><span class="stat-value" id="sMortgage">—</span></div>
+    <div class="stat-item"><span class="stat-name">Monthly insurance</span><span class="stat-value" id="sInsurance">—</span></div>
+    <div class="stat-item"><span class="stat-name">Maintenance / HOA</span><span class="stat-value" id="sMaint">—</span></div>
+    <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+    <div class="stat-item"><span class="stat-name">Blended interest rate</span><span class="stat-value accent" id="sBlended">—</span></div>
+    <div class="stat-item"><span class="stat-name">Total loan borrowed</span><span class="stat-value" id="sTotalLoan">—</span></div>
+    <div class="stat-item"><span class="stat-name">Loan-to-value (LTV)</span><span class="stat-value" id="sLTV">—</span></div>
+    <div class="stat-item"><span class="stat-name">Out-of-pocket (upfront)</span><span class="stat-value accent" id="sOOP">—</span></div>
+  </div>
+
+  <!-- MIN INCOME REQUIRED -->
+  <div style="padding:0 18px 14px;">
+    <div class="min-income-callout">
+      <span class="mic-label">Min. income for comfortable DTI</span>
+      <span class="mic-value" id="minIncomeRequired">—</span>
+    </div>
+  </div>
+
+  <div class="income-check">
+    <p class="income-label">Enter gross monthly income to check DTI</p>
+    <div class="income-input-wrap">
+      <span class="income-prefix">J$</span>
+      <input class="income-input" type="number" id="monthlyIncome" placeholder="e.g. 400,000" oninput="recalc()" />
+    </div>
+    <div class="dti-bar-wrap" id="dtiBarWrap" style="display:none;">
+      <div class="dti-track"><div class="dti-fill" id="dtiFill" style="width:0%;"></div></div>
+      <div class="dti-labels"><span id="dtiPct">—</span><span>35% comfort</span><span>50% max</span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end layout -->
+
+<p class="footer-note">
+  Illustrative purposes only. Figures based on inputs provided. Consult your mortgage advisor and attorney for confirmed quotations.<br>
+  Stamp duty, NHT rates, attorney fees and NLA registration charges are subject to revision by the relevant authorities.
+</p>
+
+<script>
+  // ── STATE ──
+  let nhtRate    = 4;
+  let age35      = true;
+  let bankManual = false;
+  let insManual  = false;
+
+  // ── HELPERS ──
+  function fmt(n) {
+    if (isNaN(n) || n == null) return '—';
+    return 'J$' + Math.round(n).toLocaleString('en-US');
+  }
+  function pmt(principal, annualRate, months) {
+    if (!principal || principal <= 0 || !months || months <= 0) return 0;
+    const r = annualRate / 100 / 12;
+    if (r === 0) return principal / months;
+    return (principal * r * Math.pow(1 + r, months)) / (Math.pow(1 + r, months) - 1);
+  }
+
+  // ── AUTO-SNAP: price change ──
+  function onPriceChange() {
+    const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    // snap bank amount if not manually overridden
+    if (!bankManual) {
+      const nhtAmt = parseFloat(document.getElementById('nhtAmount').value) || 9000000;
+      const snap = Math.max(0, price - nhtAmt);
+      const el = document.getElementById('bankAmount');
+      el.value = snap || '';
+    }
+    // snap insurance
+    if (!insManual) {
+      document.getElementById('insurance').value = Math.round(price * 0.0005);
+    }
+    recalc();
+  }
+
+  function onBankAmountEdit() {
+    bankManual = true;
+    document.getElementById('bankAutoTag').style.display  = 'none';
+    document.getElementById('bankAutoHint').style.display = 'none';
+    document.getElementById('bankAutoNote').style.display = 'none';
+    document.getElementById('bankAmount').classList.remove('auto');
+    recalc();
+  }
+
+  function onInsuranceEdit() {
+    insManual = true;
+    document.getElementById('insurance').classList.remove('auto');
+    recalc();
+  }
+
+  // ── NHT BAND ──
+  function selectBand(btn) {
+    document.querySelectorAll('.band-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    nhtRate = parseFloat(btn.dataset.rate);
+    document.getElementById('nhtRateDisplay').textContent = nhtRate.toFixed(2) + '%';
+    recalc();
+  }
+
+  // ── AGE TOGGLE ──
+  function setAge35(val) {
+    age35 = val;
+    document.getElementById('btnYes').className = 'yn-btn' + (val  ? ' active-yes' : '');
+    document.getElementById('btnNo').className  = 'yn-btn' + (!val ? ' active-no'  : '');
+    document.getElementById('nhtAdvanceField').style.display = val ? 'block' : 'none';
+    recalc();
+  }
+
+  // ── MAIN RECALC ──
+  function recalc() {
+    const price = parseFloat(document.getElementById('purchasePrice').value) || 0;
+    const bankAmt  = parseFloat(document.getElementById('bankAmount').value)  || 0;
+    const bankRate = parseFloat(document.getElementById('bankRate').value)    || 0;
+    const bankTerm = parseInt(document.getElementById('bankTerm').value)      || 360;
+    const nhtAmt   = parseFloat(document.getElementById('nhtAmount').value)   || 0;
+    const nhtTerm  = parseInt(document.getElementById('nhtTerm').value)       || 360;
+    const maintenance = parseFloat(document.getElementById('maintenance').value) || 0;
+    const insurance   = parseFloat(document.getElementById('insurance').value)   || 0;
+    const attPct      = parseFloat(document.getElementById('attorneyPct').value) || 1.25;
+    const salesAgrPct = parseFloat(document.getElementById('salesAgrPct').value) || 0.20;
+    const nlaRegPct   = parseFloat(document.getElementById('nlaRegPct').value)   || 0.25;
+    const depositPct  = parseFloat(document.getElementById('depositPct').value)  || 10;
+    const nhtAdvAmt   = age35 ? (parseFloat(document.getElementById('nhtAdvanceAmount').value) || 0) : 0;
+
+    // ── SANITY CHECK ──
+    const totalLoan = bankAmt + nhtAmt;
+    const deposit   = price * depositPct / 100;
+    const covered   = totalLoan + deposit;
+    const gap       = price - covered;
+    const loanPct   = price > 0 ? Math.min(totalLoan / price * 100, 100) : 0;
+    const depPct    = price > 0 ? Math.min(deposit   / price * 100, 100) : 0;
+
+    document.getElementById('sanityLoanFill').style.width  = loanPct + '%';
+    document.getElementById('sanityDepFill').style.left    = loanPct + '%';
+    document.getElementById('sanityDepFill').style.width   = depPct + '%';
+    document.getElementById('sanityLoanLabel').textContent = 'Loans: ' + fmt(totalLoan);
+    document.getElementById('sanityDepLabel').textContent  = 'Deposit: ' + fmt(deposit);
+    document.getElementById('sanityPriceLabel').textContent = 'Price: ' + fmt(price);
+
+    const statusEl = document.getElementById('sanityStatus');
+    if (price <= 0) {
+      statusEl.textContent = '';
+      document.getElementById('sanityLoanFill').style.background = 'var(--slate)';
+    } else if (Math.abs(gap) < 1000) {
+      statusEl.textContent  = '✓ Loan + deposit fully covers purchase price';
+      statusEl.style.color  = 'var(--green)';
+      document.getElementById('sanityLoanFill').style.background = 'var(--green)';
+    } else if (gap > 0) {
+      statusEl.textContent  = '⚠ Shortfall of ' + fmt(gap) + ' — increase deposit or loans';
+      statusEl.style.color  = 'var(--amber)';
+      document.getElementById('sanityLoanFill').style.background = 'var(--amber)';
+    } else {
+      statusEl.textContent  = '↑ Surplus of ' + fmt(Math.abs(gap)) + ' — stronger equity position';
+      statusEl.style.color  = 'var(--slate-light)';
+      document.getElementById('sanityLoanFill').style.background = '#5BB3FF';
+    }
+
+    // ── FEE CALCULATIONS ──
+    const GCT         = 0.15;
+    const stampBuyer  = 2500;
+    const attBase     = price * attPct / 100;
+    const attTotal    = attBase * (1 + GCT);
+    const salesBase   = price * salesAgrPct / 100;
+    const salesTotal  = salesBase * (1 + GCT);
+    const nlaReg      = price * nlaRegPct / 100;
+    const totalFees   = stampBuyer + attTotal + salesTotal + nlaReg;
+    const totalUpfront= deposit + totalFees;
+    const outOfPocket = Math.max(0, totalUpfront - nhtAdvAmt);
+
+    const gctNote = '<span class="fee-gct-note">Incl. 15% GCT</span>';
+    document.getElementById('feeBreakdown').innerHTML = `
+      <div class="fee-row">
+        <div class="fee-name">Deposit<small>${depositPct}% of purchase price</small></div>
+        <div class="fee-value">${fmt(deposit)}</div>
+      </div>
+      <div class="fee-row">
+        <div class="fee-name">Stamp Duty<small>Fixed — buyer's portion</small></div>
+        <div class="fee-value">${fmt(stampBuyer)}</div>
+      </div>
+      <div class="fee-row">
+        <div class="fee-name">Attorney Fee<small>${attPct}% of price + 15% GCT</small></div>
+        <div class="fee-value">${fmt(attTotal)}${gctNote}</div>
+      </div>
+      <div class="fee-row">
+        <div class="fee-name">Sales Agreement Fee<small>${salesAgrPct}% of price + 15% GCT</small></div>
+        <div class="fee-value">${fmt(salesTotal)}${gctNote}</div>
+      </div>
+      <div class="fee-row">
+        <div class="fee-name">NLA Registration Fee<small>${nlaRegPct}% of price — National Land Agency</small></div>
+        <div class="fee-value">${fmt(nlaReg)}</div>
+      </div>`;
+
+    document.getElementById('totalUpfront').textContent = fmt(totalUpfront);
+    document.getElementById('nhtDeductionRow').innerHTML = age35 && nhtAdvAmt > 0 ? `
+      <div class="nht-deduction" style="margin-top:8px;">
+        <span class="nht-deduction-label">NHT Advance deducted</span>
+        <span class="nht-deduction-value">− ${fmt(nhtAdvAmt)}</span>
+      </div>` : '';
+    document.getElementById('outOfPocket').textContent = fmt(outOfPocket);
+
+    // ── LOAN TABLE ──
+    const bankMonthly   = pmt(bankAmt, bankRate, bankTerm);
+    const nhtMonthly    = pmt(nhtAmt, nhtRate, nhtTerm);
+    const totalMortgage = bankMonthly + nhtMonthly;
+    const blended       = totalLoan > 0 ? (bankAmt * bankRate + nhtAmt * nhtRate) / totalLoan : 0;
+    const ltv           = price > 0 ? totalLoan / price * 100 : 0;
+    const totalMonthly  = totalMortgage + insurance + maintenance;
+
+    document.getElementById('loanTableBody').innerHTML = `
+      <tr>
+        <td>Bank Financing <span class="tag tag-bank">Bank</span></td>
+        <td>${fmt(bankAmt)}</td><td>${bankRate.toFixed(2)}%</td>
+        <td>${bankTerm}</td><td>${fmt(bankMonthly)}</td>
+      </tr>
+      <tr>
+        <td>NHT <span class="tag tag-nht">NHT</span></td>
+        <td>${fmt(nhtAmt)}</td><td>${nhtRate.toFixed(2)}%</td>
+        <td>${nhtTerm}</td><td>${fmt(nhtMonthly)}</td>
+      </tr>`;
+    document.getElementById('tTotalAmount').textContent  = fmt(totalLoan);
+    document.getElementById('tBlendedRate').textContent  = blended > 0 ? blended.toFixed(2) + '%' : '—';
+    document.getElementById('tTotalMonthly').textContent = fmt(totalMortgage);
+
+    // ── SIDEBAR ──
+    document.getElementById('monthlyTotal').textContent = fmt(totalMonthly);
+    document.getElementById('sMortgage').textContent    = fmt(totalMortgage);
+    document.getElementById('sInsurance').textContent   = fmt(insurance);
+    document.getElementById('sMaint').textContent       = fmt(maintenance);
+    document.getElementById('sBlended').textContent     = blended > 0 ? blended.toFixed(2) + '%' : '—';
+    document.getElementById('sTotalLoan').textContent   = fmt(totalLoan);
+    document.getElementById('sLTV').textContent         = ltv > 0 ? ltv.toFixed(1) + '%' : '—';
+    document.getElementById('sOOP').textContent         = fmt(outOfPocket);
+
+    // Min income for 35% DTI
+    const minIncome = totalMonthly > 0 ? totalMonthly / 0.35 : 0;
+    document.getElementById('minIncomeRequired').textContent = minIncome > 0 ? fmt(Math.ceil(minIncome)) : '—';
+
+    // ── INCOME / DTI ──
+    const income = parseFloat(document.getElementById('monthlyIncome').value) || 0;
+    const dtiWrap = document.getElementById('dtiBarWrap');
+    const verdict = document.getElementById('verdictBadge');
+    const vText   = document.getElementById('verdictText');
+    const fill    = document.getElementById('dtiFill');
+    const dtiEl   = document.getElementById('dtiPct');
+
+    if (income > 0) {
+      dtiWrap.style.display = 'block';
+      const dti = totalMonthly / income * 100;
+      fill.style.width = Math.min(dti, 100) + '%';
+      dtiEl.textContent = dti.toFixed(1) + '% DTI';
+      if (dti <= 30) {
+        fill.style.background = 'var(--green)';
+        verdict.className = 'verdict-badge strong';
+        vText.textContent = 'Strong — comfortably affordable';
+      } else if (dti <= 40) {
+        fill.style.background = 'var(--amber)';
+        verdict.className = 'verdict-badge caution';
+        vText.textContent = 'Caution — manageable, watch spend';
+      } else {
+        fill.style.background = 'var(--red)';
+        verdict.className = 'verdict-badge stretch';
+        vText.textContent = 'Stretch — affordability at risk';
+      }
+    } else {
+      dtiWrap.style.display = 'none';
+      verdict.className = 'verdict-badge unknown';
+      vText.textContent = 'Enter income for verdict';
+    }
+  }
+
+  // ── RESET ──
+  function resetAll() {
+    bankManual = false; insManual = false;
+    const el = document.getElementById('bankAmount');
+    el.classList.add('auto');
+    document.getElementById('bankAutoTag').style.display  = '';
+    document.getElementById('bankAutoHint').style.display = '';
+    document.getElementById('bankAutoNote').style.display = '';
+    const d = {
+      purchasePrice: 30000000, bankRate: 9.00, bankTerm: 360,
+      nhtAmount: 9000000, nhtTerm: 360, maintenance: 0,
+      attorneyPct: 1.25, salesAgrPct: 0.20, nlaRegPct: 0.25,
+      depositPct: 10, nhtAdvanceAmount: 2000000
+    };
+    Object.entries(d).forEach(([id, v]) => { const e = document.getElementById(id); if (e) e.value = v; });
+    document.getElementById('monthlyIncome').value = '';
+    document.querySelectorAll('.band-btn').forEach(b => {
+      b.classList.remove('active');
+      if (b.dataset.rate === '4') b.classList.add('active');
+    });
+    nhtRate = 4;
+    document.getElementById('nhtRateDisplay').textContent = '4.00%';
+    setAge35(true);
+    // trigger price cascade for bank + insurance snaps
+    onPriceChange();
+  }
+
+  // ── INIT ──
+  onPriceChange();
+</script>
+</body>
+</html>
